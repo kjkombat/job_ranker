@@ -2,6 +2,8 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.responses import JSONResponse
 import os
 import tempfile
+import pdfplumber
+from llm import llm_response
 
 app = FastAPI(
     title="Criteria Extraction API",
@@ -36,6 +38,13 @@ async def extract_criteria(file: UploadFile = File(...)):
 
         # TODO: Add logic to extract criteria from the PDF or DOCX file
 
+        with pdfplumber.open(temp_file_path) as pdf:
+            text = ""
+            for page in pdf.pages:
+                text += page.extract_text()
+
+        criteria = llm_response(text)
+
         os.unlink(temp_file_path)
 
         return JSONResponse(
@@ -43,7 +52,7 @@ async def extract_criteria(file: UploadFile = File(...)):
             content={
                 "status": "success",
                 "message": f"Successfully processed file: {file.filename}",
-                # TODO extracted criteria would be returned here
+                "criteria": criteria.criteria,
             },
         )
 
