@@ -16,7 +16,7 @@ cd repo-name`
 
 2. Set up a virtual environment and install dependencies using uv:
 bash
-`
+```
 # Install uv if you don't have it already
 pip install uv
 
@@ -30,15 +30,15 @@ source .venv/bin/activate
 
 # Install dependencies from requirements.in
 uv pip install -r requirements.in
-`
+```
 3. Set up .env file
-Add .env file at same directory level as main.py. Follow is the sample.
+Add .env file at same directory level as main.py. Follow the sample.
 `
 MISTRAL_API_KEY = "" #Your mistral key here
 `
 
 3. Run the application:
-bashCopypython main.py
+`python main.py`
 The server will start, typically on http://127.0.0.1:8000
 
 ### API Documentation
