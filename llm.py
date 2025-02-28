@@ -20,7 +20,7 @@ def llm_response(job_description):
         messages=[
             {
                 "role": "system",
-                "content": "Given the parsed job description. Extract the top 5 job criteria.",
+                "content": "Given the parsed job description. Extract top 5 job criteria. These criteria are to be then used to score from 1-5 each so it needs to be brief and can be used to score resumes against.",
             },
             {
                 "role": "user",
