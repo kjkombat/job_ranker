@@ -2,11 +2,14 @@ import asyncio
 import json
 from fastapi import FastAPI, File, UploadFile, HTTPException, Form
 from fastapi.responses import JSONResponse
+from fastapi.openapi.docs import get_swagger_ui_html
+from fastapi.staticfiles import StaticFiles
 import os
 import tempfile
 import pdfplumber
 from typing import List, Optional
 import docx
+from pydantic import BaseModel, Field
 from llm import llm_response, llm_generate_score
 import pandas as pd
 
@@ -15,10 +18,84 @@ import pandas as pd
 app = FastAPI(
     title="Criteria Extraction API",
     description="Extract criteria from job descriptions",
+    swagger_ui=True,
 )
 
 
-@app.post("/extract-criteria")
+class CriteriaResponse(BaseModel):
+    status: str = Field(..., example="success", description="Status of the operation")
+    message: str = Field(
+        ...,
+        example="Successfully processed file: job_description.pdf",
+        description="Operation result message",
+    )
+    criteria: List[str] = Field(
+        ...,
+        example=[
+            "5+ years of Python experience",
+            "Strong knowledge of Django",
+            "Bachelor's degree in Computer Science",
+        ],
+        description="Extracted criteria from the job description",
+    )
+
+
+class ScoreResponse(BaseModel):
+    status: str = Field(..., example="success", description="Status of the operation")
+    csv: str = Field(
+        ...,
+        example="username,Python experience,Django knowledge,Education,total\nJohn Doe,5,4,3,12\nJane Smith,3,5,4,12",
+        description="CSV-formatted string with scoring results",
+    )
+
+
+@app.post(
+    "/extract-criteria",
+    response_model=CriteriaResponse,
+    tags=["Job Descriptions"],
+    summary="Extract criteria from a job description",
+    include_in_schema=True,
+    description="""
+    Upload a job description document (PDF or DOCX) to extract key hiring criteria.
+    The system will analyze the document and return a list of important requirements.
+    """,
+    responses={
+        200: {
+            "description": "Successful criteria extraction",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "message": "Successfully processed file: job_description.pdf",
+                        "criteria": [
+                            "5+ years of Python experience",
+                            "Strong knowledge of Django",
+                            "Bachelor's degree in Computer Science",
+                        ],
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Bad request - Invalid file type",
+            "content": {
+                "application/json": {
+                    "example": {"detail": "Only PDF and DOCX files are supported"}
+                }
+            },
+        },
+        500: {
+            "description": "Server error during processing",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during processing: [error details]"
+                    }
+                }
+            },
+        },
+    },
+)
 async def extract_criteria(file: UploadFile = File(...)):
     """
     Extract criteria from a job description file (PDF or DOCX)
@@ -83,7 +160,52 @@ async def extract_criteria(file: UploadFile = File(...)):
         )
 
 
-@app.post("/score-resumes")
+@app.post(
+    "/score-resumes",
+    response_model=ScoreResponse,
+    tags=["Resume Scoring"],
+    summary="Score multiple resumes against criteria",
+    include_in_schema=True,
+    description="""
+    Upload multiple resumes (PDF or DOCX) and score them against specified criteria.
+    The system will analyze each resume and assign scores from 1-5 for each criterion.
+    
+    The response includes a CSV with scores for each resume and criterion, plus a total score.
+    """,
+    responses={
+        200: {
+            "description": "Successful resume scoring",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "status": "success",
+                        "csv": "username,Python experience,Django knowledge,Education,total\nJohn Doe,5,4,3,12\nJane Smith,3,5,4,12",
+                    }
+                }
+            },
+        },
+        400: {
+            "description": "Bad request - Invalid files or criteria",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "Criteria must be a JSON-encoded list of strings"
+                    }
+                }
+            },
+        },
+        500: {
+            "description": "Server error during processing",
+            "content": {
+                "application/json": {
+                    "example": {
+                        "detail": "An error occurred during processing: [error details]"
+                    }
+                }
+            },
+        },
+    },
+)
 async def score_resumes(files: List[UploadFile] = File(...), criteria: str = Form()):
     """
     Score resumes against specified criteria
@@ -205,3 +327,35 @@ async def process_file(file: UploadFile, criteria_list: List[str]):
         # Ensure temp file is always deleted
         if os.path.exists(temp_file_path):
             os.unlink(temp_file_path)
+
+
+# Add a root endpoint with documentation
+@app.get("/", include_in_schema=False)
+async def root():
+    return {
+        "message": "Welcome to the Resume Scoring API",
+        "documentation": "/docs",
+        "endpoints": [
+            {
+                "path": "/extract-criteria",
+                "method": "POST",
+                "description": "Extract criteria from job descriptions",
+            },
+            {
+                "path": "/score-resumes",
+                "method": "POST",
+                "description": "Score resumes against criteria",
+            },
+        ],
+    }
+
+
+@app.get("/docs", include_in_schema=False)
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url=app.openapi_url,
+        title=app.title + " - API Documentation",
+        swagger_js_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui-bundle.js",
+        swagger_css_url="https://cdn.jsdelivr.net/npm/swagger-ui-dist@4/swagger-ui.css",
+        swagger_favicon_url="https://fastapi.tiangolo.com/img/favicon.png",
+    )
