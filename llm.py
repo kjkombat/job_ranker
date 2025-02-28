@@ -73,7 +73,7 @@ def llm_generate_score(job_resume, scoring_criteria):
 
 def create_class_from_strings(strings: List[str], class_name: str = "DynamicModel"):
 
-    field_definitions = {string: (str, "5") for string in strings}
     field_definitions["username"] = (str, "")
+    field_definitions = {string: (str, "5") for string in strings}
     dynamic_model = create_model(class_name, **field_definitions)
     return dynamic_model
