@@ -1,0 +1,11 @@
+asyncio
+fastapi
+uvicorn
+pdfplumber
+pandas
+docx
+python-docx
+python-dotenv
+pydantic
+requests
+mistralai
