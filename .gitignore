@@ -170,3 +170,6 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+.flake8
+.pre-commit-config.yaml
+*.code-workspace
